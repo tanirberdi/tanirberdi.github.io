@@ -130,7 +130,7 @@
                     facingMode: currentFacingMode,
                     // Задаем только желаемую ширину (разрешение сенсора), 
                     // а высоту браузер подберет сам автоматически без ошибок!
-                    width: { ideal: 4096 } 
+                    width: { ideal: 2560 } 
                 },
                 audio: false
             };
@@ -216,7 +216,7 @@
             statusDiv.textContent = `Снимок ${canvas.width}×${canvas.height} — сжимаем...`;
             canvas.toBlob((blob) => {
                 if (blob) uploadPhoto(blob);
-            }, 'image/jpeg', 0.87);
+            }, 'image/jpeg', 0.90);
         });
 
         // 3. Отправка на сервер

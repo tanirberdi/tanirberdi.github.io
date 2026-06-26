@@ -154,6 +154,9 @@
             // Создаем форму для отправки файла
             const formData = new FormData();
             formData.append('photo', photoBlob, `photo_${Date.now()}.jpg`);
+            // Переводим байты в Мегабайты и округляем до 2 знаков после запятой
+                const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
+                statusDiv.textContent = `Отправка фото в облако... (${fileSizeMB} МБ)`;
 
             try {
                 // ВАЖНО: Замените URL ниже на адрес вашего бэкенда или облачного хранилища

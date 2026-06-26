@@ -125,13 +125,12 @@
             stopCurrentStream();
             statusDiv.textContent = "Запрос доступа к камере...";
 
-            // Настройка ограничений, которая одинаково хорошо понятна и Android, и iPhone
             const constraints = {
                 video: {
                     facingMode: currentFacingMode,
-                    // Вместо огромного ideal задаем гибкий диапазон (iPhone это любит)
-                    width: { min: 1280, ideal: 1920, max: 3840 },
-                    height: { min: 720, ideal: 1080, max: 2160 }
+                    // Задаем только желаемую ширину (разрешение сенсора), 
+                    // а высоту браузер подберет сам автоматически без ошибок!
+                    width: { ideal: 4096 } 
                 },
                 audio: false
             };
@@ -144,14 +143,12 @@
                 switchBtn.style.display = 'inline-block'; 
                 statusDiv.textContent  = `Камера включена (${currentFacingMode === 'environment' ? 'основная' : 'фронтальная'}). Можно снимать!`;
             } catch (err) {
-                console.warn("Высокое разрешение отклонено, пробуем стандартный HD поток:", err);
+                console.warn("Максимальное разрешение отклонено, пробуем Full HD:", err);
                 try {
-                    // Запасной вариант специально для капризных моделей iOS
                     currentStream = await navigator.mediaDevices.getUserMedia({
                         video: { 
                             facingMode: currentFacingMode,
-                            width: 1280,
-                            height: 720
+                            width: { ideal: 1920 }
                         },
                         audio: false
                     });
@@ -159,7 +156,7 @@
                     startBtn.style.display = 'none';
                     snapBtn.style.display  = 'inline-block';
                     switchBtn.style.display = 'inline-block';
-                    statusDiv.textContent  = "Камера включена (стандартное HD разрешение).";
+                    statusDiv.textContent  = "Камера включена (Full HD).";
                 } catch (err2) {
                     console.error("Ошибка доступа к камере:", err2);
                     statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";

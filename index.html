@@ -165,96 +165,48 @@
         });
 
         // 2. Создание снимка
-        snapBtn.addEventListener('click', async () => {
+        snapBtn.addEventListener('click', () => {
             if (!videoReady) {
                 statusDiv.textContent = "Камера ещё не готова, подождите секунду...";
                 return;
             }
 
-            snapBtn.disabled = true;
-            statusDiv.textContent = "Делаем снимок...";
+            const context = canvas.getContext('2d');
 
-            const track = currentStream && currentStream.getVideoTracks()[0];
+            // Берём реальное разрешение из трека (наиболее надёжно на iOS Safari)
+            let realWidth  = video.videoWidth;
+            let realHeight = video.videoHeight;
 
-            // --- Метод 1: ImageCapture API (максимальное разрешение сенсора, Chrome/Android) ---
-            if (track && typeof ImageCapture !== 'undefined') {
-                try {
-                    const imageCapture = new ImageCapture(track);
-                    const blob = await imageCapture.takePhoto();
-                    statusDiv.textContent = `Снимок готов: ${(blob.size / (1024*1024)).toFixed(2)} МБ`;
-                    await uploadPhoto(blob);
-                    snapBtn.disabled = false;
-                    return;
-                } catch (e) {
-                    console.warn("ImageCapture не сработал, переходим к canvas:", e);
-                }
-            }
-
-            // --- Метод 2: временный hi-res поток (фолбэк для Safari/iOS) ---
-            // Safari показывает видео в низком разрешении. Запрашиваем новый поток
-            // явно с высоким разрешением, рисуем кадр, сразу останавливаем.
+            // Дополнительная проверка через getSettings() — Safari иногда отдаёт актуальные данные только здесь
             try {
-                const hiResStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { ideal: currentFacingMode },
-                        width:  { min: 1280, ideal: 4096 },
-                        height: { min: 720,  ideal: 3072 }
-                    },
-                    audio: false
-                });
+                const track = currentStream && currentStream.getVideoTracks()[0];
+                if (track) {
+                    const settings = track.getSettings();
+                    if (settings.width  > realWidth)  realWidth  = settings.width;
+                    if (settings.height > realHeight) realHeight = settings.height;
+                }
+            } catch(e) { /* getSettings() может не поддерживаться в старых браузерах */ }
 
-                const hiResVideo = document.createElement('video');
-                hiResVideo.srcObject = hiResStream;
-                hiResVideo.muted = true;
-                hiResVideo.playsInline = true;
-                await hiResVideo.play();
+            // Финальный фолбэк если всё равно 0
+            canvas.width  = realWidth  > 0 ? realWidth  : 1920;
+            canvas.height = realHeight > 0 ? realHeight : 1080;
 
-                // Ждём реальных размеров (до 3 сек)
-                await new Promise((resolve) => {
-                    const timeout = setTimeout(resolve, 3000);
-                    const check = () => {
-                        if (hiResVideo.videoWidth > 480) { clearTimeout(timeout); resolve(); return; }
-                        setTimeout(check, 100);
-                    };
-                    check();
-                });
-
-                const w = hiResVideo.videoWidth  || 1280;
-                const h = hiResVideo.videoHeight || 720;
-                canvas.width  = w;
-                canvas.height = h;
-
-                const ctx = canvas.getContext('2d');
-                if (currentFacingMode === 'user') { ctx.translate(w, 0); ctx.scale(-1, 1); }
-                ctx.drawImage(hiResVideo, 0, 0, w, h);
-                if (currentFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-                hiResStream.getTracks().forEach(t => t.stop());
-
-                statusDiv.textContent = `Снимок ${w}×${h} — сжимаем...`;
-                canvas.toBlob(async (blob) => {
-                    if (blob) await uploadPhoto(blob);
-                    snapBtn.disabled = false;
-                }, 'image/jpeg', 0.87);
-                return;
-
-            } catch (e) {
-                console.warn("Hi-res поток недоступен, снимаем из текущего:", e);
+            // Если камера фронтальная, отзеркалить холст, чтобы фото не было перевёрнутым
+            if (currentFacingMode === 'user') {
+                context.translate(canvas.width, 0);
+                context.scale(-1, 1);
             }
 
-            // --- Метод 3: последний резерв — текущий видеопоток как есть ---
-            const ctx = canvas.getContext('2d');
-            const w = video.videoWidth  || 1280;
-            const h = video.videoHeight || 720;
-            canvas.width = w; canvas.height = h;
-            if (currentFacingMode === 'user') { ctx.translate(w, 0); ctx.scale(-1, 1); }
-            ctx.drawImage(video, 0, 0, w, h);
-            if (currentFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            statusDiv.textContent = `Снимок ${w}×${h} — отправляем...`;
-            canvas.toBlob(async (blob) => {
-                if (blob) await uploadPhoto(blob);
-                snapBtn.disabled = false;
+            // Сбрасываем трансформацию холста обратно, если зеркалили
+            if (currentFacingMode === 'user') {
+                context.setTransform(1, 0, 0, 1, 0, 0);
+            }
+
+            statusDiv.textContent = `Снимок ${canvas.width}×${canvas.height} — сжимаем...`;
+            canvas.toBlob((blob) => {
+                if (blob) uploadPhoto(blob);
             }, 'image/jpeg', 0.87);
         });
 

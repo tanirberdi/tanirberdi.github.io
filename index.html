@@ -82,8 +82,8 @@
             const constraints = {
                 video: {
                     facingMode: 'environment',
-                    width:  { ideal: 4080 },
-                    height: { ideal: 3072 }
+                    width:  { ideal: 3400 },
+                    height: { ideal: 2560 }
                 },
                 audio: false
             };
@@ -118,8 +118,8 @@
 
             const realWidth  = video.videoWidth;
             const realHeight = video.videoHeight;
-            canvas.width  = realWidth  > 0 ? realWidth  : 4080;
-            canvas.height = realHeight > 0 ? realHeight : 3072;
+            canvas.width  = realWidth  > 0 ? realWidth  : 3400;
+            canvas.height = realHeight > 0 ? realHeight : 2560;
 
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 

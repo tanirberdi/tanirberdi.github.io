@@ -130,22 +130,26 @@
 
         // 2. Создание снимка по клику
         snapBtn.addEventListener('click', () => {
-            const context = canvas.getContext('2d');
-            
-            // Устанавливаем разрешение кадра как у видеопотока
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            
-            // Рисуем текущий кадр из видео на canvas
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Конвертируем изображение в формат WebP/JPEG (Blob)
-            canvas.toBlob((blob) => {
-                if (blob) {
-                    uploadPhoto(blob);
-                }
-            }, 'image/jpeg', 1.0); // 0.85 — качество сжатия
-        });
+    const context = canvas.getContext('2d');
+    
+    // Получаем реальное разрешение видеопотока из камеры
+    const realWidth = video.videoWidth;
+    const realHeight = video.videoHeight;
+
+    // Если камера еще не вернула размеры, используем стандартные высокие параметры
+    canvas.width = realWidth > 0 ? realWidth : 1920;
+    canvas.height = realHeight > 0 ? realHeight : 1080;
+    
+    // Зеркально разворачиваем холст перед отрисовкой (если у вас селфи-камера отзеркалена)
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Конвертируем в JPEG с максимальным качеством 0.95 (1.0 делать не стоит, оно просто раздувает вес без улучшения)
+    canvas.toBlob((blob) => {
+        if (blob) {
+            uploadPhoto(blob);
+        }
+    }, 'image/jpeg', 0.95); 
+});
 
         // 3. Функция отправки фотографии в облако (на сервер)
         async function uploadPhoto(photoBlob) {

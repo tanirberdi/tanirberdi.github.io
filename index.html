@@ -50,26 +50,27 @@
         #snap-btn { background-color: #ff3b30; color: white; display: none; }
         #status { margin-top: 15px; font-size: 14px; color: #a1a1a6; text-align: center; }
         canvas { display: none; }
-            .btn-gallery {
-    display: block;
-    width: 80%;
-    max-width: 300px;
-    margin: 25px auto 10px auto; /* Отступы: сверху побольше, чтобы отделить от камеры */
-    padding: 12px 20px;
-    background-color: #ff5722; /* Яркий цвет (например, оранжевый), чтобы отличалась от кнопки снимка */
-    color: white;
-    text-align: center;
-    text-decoration: none;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 25px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: background-color 0.3s ease;
-}
-
-.btn-gallery:hover {
-    background-color: #e64a19; /* Эффект при нажатии/наведении */
-}
+        
+        /* Стили кнопки галереи */
+        .btn-gallery {
+            display: block;
+            width: 80%;
+            max-width: 300px;
+            margin: 25px auto 10px auto;
+            padding: 12px 20px;
+            background-color: #ff5722; /* Красивый оранжевый цвет */
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+        .btn-gallery:hover {
+            background-color: #e64a19;
+        }
     </style>
 </head>
 <body>
@@ -86,6 +87,11 @@
     </div>
 
     <div id="status">Нажмите кнопку для запуска камеры</div>
+    
+    <a href="ССЫЛКА_НА_ВАШУ_ПАПКУ_ЯНДЕКС_ДИСКА" target="_blank" id="galleryBtn" class="btn-gallery">
+        📸 Посмотреть все фото (Галерея)
+    </a>
+
     <canvas id="canvas"></canvas>
 
     <script>
@@ -115,7 +121,7 @@
                 snapBtn.style.display  = 'inline-block';
                 statusDiv.textContent  = "Камера включена. Можно снимать!";
             } catch (err) {
-                console.warn("Full HD недоступно, пробуем запасной вариант:", err);
+                console.warn("Высокое разрешение недоступно, пробуем запасной вариант:", err);
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'environment' },
@@ -130,7 +136,7 @@
                     statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";
                 }
             }
-        }); // ← закрываем startBtn listener
+        });
 
         // 2. Создание снимка
         snapBtn.addEventListener('click', () => {
@@ -150,33 +156,28 @@
 
         // 3. Отправка на сервер
         async function uploadPhoto(photoBlob) {
-    const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
-    statusDiv.textContent = `Отправка фото в облако... (${fileSizeMB} МБ)`;
+            const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
+            statusDiv.textContent = `Отправка фото в облако... (${fileSizeMB} МБ)`;
 
-    try {
-        // Отправляем БЕЗ FormData — просто чистый blob (поток байт)
-        const response = await fetch('https://hook.eu1.make.com/usmx9e6xjjoo1d4t8zk5c685qyw9duv9', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/octet-stream' // Говорим Make, что это чистый файл
-            },
-            body: photoBlob 
-        });
+            try {
+                const response = await fetch('https://hook.eu1.make.com/usmx9e6xjjoo1d4t8zk5c685qyw9duv9', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    body: photoBlob 
+                });
 
-        if (response.ok) {
-            statusDiv.textContent = `Успешно загружено (${fileSizeMB} МБ) в папку Wedding!`;
-        } else {
-            statusDiv.textContent = `Ошибка сервера. Статус: ${response.status}`;
-        }
-    } catch (error) {
-        console.error("Ошибка сети:", error);
+                if (response.ok) {
+                    statusDiv.textContent = `Успешно загружено (${fileSizeMB} МБ) в папку Wedding!`;
+                } else {
+                    statusDiv.textContent = `Ошибка сервера. Статус: ${response.status}`;
+                }
+            } catch (error) {
+                console.error("Ошибка сети:", error);
                 statusDiv.textContent = "Ошибка сети. Проверьте соединение.";
             }
-            <a href="https://disk.yandex.ru/d/ваш_уникальный_код" target="_blank" id="galleryBtn" class="btn-gallery">
-    📸 Посмотреть все фото (Галерея)
-</a>
         }
-        
     </script>
 </body>
 </html>

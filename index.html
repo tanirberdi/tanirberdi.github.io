@@ -76,7 +76,7 @@
 </head>
 <body>
 
-    <h1>Мгновенное фото Мероприятия</h1>
+    <h1>Мгновенное фото на память</h1>
 
     <div class="camera-container">
         <video id="video" autoplay playsinline></video>
@@ -90,7 +90,7 @@
     <div id="status">Нажмите кнопку для запуска камеры</div>
     
     <a href="https://t.me/tattikunder" target="_blank" id="galleryBtn" class="btn-gallery">
-        📸 Посмотреть все фото (Галерея)
+        📸 Посмотреть все фото (Телеграм)
     </a>
 
     <canvas id="canvas"></canvas>
@@ -156,7 +156,7 @@
                     startBtn.style.display = 'none';
                     snapBtn.style.display  = 'inline-block';
                     switchBtn.style.display = 'inline-block';
-                    statusDiv.textContent  = "Камера включена (Full HD).";
+                    statusDiv.textContent  = "Камера включена";
                 } catch (err2) {
                     console.error("Ошибка доступа к камере:", err2);
                     statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";
@@ -234,7 +234,7 @@
                 });
 
                 if (response.ok) {
-                    statusDiv.textContent = `Успешно загружено (${fileSizeMB} МБ) в папку Wedding!`;
+                    statusDiv.textContent = `Успешно загружено (${fileSizeMB} МБ)`;
                 } else {
                     statusDiv.textContent = `Ошибка сервера. Статус: ${response.status}`;
                 }

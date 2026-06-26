@@ -105,12 +105,19 @@
 
         let currentStream = null;
         let currentFacingMode = 'environment'; // По умолчанию задняя камера ('environment'). Фронтальная — 'user'
+        let videoReady = false;
 
-        // Функция остановки текущих стримов кары (нужна при переключении)
+        // Ждём реального разрешения видео от браузера (критично для Safari/iOS)
+        video.addEventListener('loadedmetadata', () => {
+            videoReady = true;
+        });
+
+        // Функция остановки текущих стримов камеры (нужна при переключении)
         function stopCurrentStream() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
             }
+            videoReady = false;
         }
 
         // Функция запуска камеры
@@ -118,11 +125,11 @@
             stopCurrentStream();
             statusDiv.textContent = "Запрос доступа к камере...";
 
+            // На iOS Safari advanced constraints с width/height часто игнорируются или вызывают ошибку.
+            // Используем только facingMode, чтобы браузер сам выбрал максимальное разрешение.
             const constraints = {
                 video: {
-                    facingMode: currentFacingMode,
-                    width:  { ideal: 3400 },
-                    height: { ideal: 2560 }
+                    facingMode: { ideal: currentFacingMode }
                 },
                 audio: false
             };
@@ -130,26 +137,21 @@
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = currentStream;
-                startBtn.style.display = 'none';
-                snapBtn.style.style.display  = 'inline-block';
-                switchBtn.style.display = 'inline-block'; // Показываем кнопку смены камеры
-                statusDiv.textContent  = `Камера включена (${currentFacingMode === 'environment' ? 'основная' : 'фронтальная'}). можно снимать!`;
+
+                // Ждём loadedmetadata чтобы videoWidth/videoHeight были корректными
+                await new Promise((resolve) => {
+                    if (video.readyState >= 1) { resolve(); return; }
+                    video.addEventListener('loadedmetadata', resolve, { once: true });
+                });
+
+                videoReady = true;
+                startBtn.style.display   = 'none';
+                snapBtn.style.display    = 'inline-block'; // ИСПРАВЛЕНО: был snapBtn.style.style.display
+                switchBtn.style.display  = 'inline-block';
+                statusDiv.textContent    = `Камера включена (${currentFacingMode === 'environment' ? 'основная' : 'фронтальная'}, ${video.videoWidth}×${video.videoHeight}). Можно снимать!`;
             } catch (err) {
-                console.warn("Высокое разрешение недоступно, пробуем запасной вариант:", err);
-                try {
-                    currentStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: currentFacingMode },
-                        audio: false
-                    });
-                    video.srcObject = currentStream;
-                    startBtn.style.display = 'none';
-                    snapBtn.style.display  = 'inline-block';
-                    switchBtn.style.display = 'inline-block';
-                    statusDiv.textContent  = "Камера включена (стандартное разрешение).";
-                } catch (err2) {
-                    console.error("Ошибка доступа к камере:", err2);
-                    statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";
-                }
+                console.error("Ошибка доступа к камере:", err);
+                statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";
             }
         }
 
@@ -164,26 +166,45 @@
 
         // 2. Создание снимка
         snapBtn.addEventListener('click', () => {
+            if (!videoReady) {
+                statusDiv.textContent = "Камера ещё не готова, подождите секунду...";
+                return;
+            }
+
             const context = canvas.getContext('2d');
 
-            const realWidth  = video.videoWidth;
-            const realHeight = video.videoHeight;
-            canvas.width  = realWidth  > 0 ? realWidth  : 3400;
-            canvas.height = realHeight > 0 ? realHeight : 2560;
+            // Берём реальное разрешение из трека (наиболее надёжно на iOS Safari)
+            let realWidth  = video.videoWidth;
+            let realHeight = video.videoHeight;
 
-            // Если камера фронтальная, можно отзеркалить холст, чтобы фото не было перевернутым
+            // Дополнительная проверка через getSettings() — Safari иногда отдаёт актуальные данные только здесь
+            try {
+                const track = currentStream && currentStream.getVideoTracks()[0];
+                if (track) {
+                    const settings = track.getSettings();
+                    if (settings.width  > realWidth)  realWidth  = settings.width;
+                    if (settings.height > realHeight) realHeight = settings.height;
+                }
+            } catch(e) { /* getSettings() может не поддерживаться в старых браузерах */ }
+
+            // Финальный фолбэк если всё равно 0
+            canvas.width  = realWidth  > 0 ? realWidth  : 1920;
+            canvas.height = realHeight > 0 ? realHeight : 1080;
+
+            // Если камера фронтальная, отзеркалить холст, чтобы фото не было перевёрнутым
             if (currentFacingMode === 'user') {
                 context.translate(canvas.width, 0);
                 context.scale(-1, 1);
             }
 
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
+
             // Сбрасываем трансформацию холста обратно, если зеркалили
             if (currentFacingMode === 'user') {
                 context.setTransform(1, 0, 0, 1, 0, 0);
             }
 
+            statusDiv.textContent = `Снимок ${canvas.width}×${canvas.height} — сжимаем...`;
             canvas.toBlob((blob) => {
                 if (blob) uploadPhoto(blob);
             }, 'image/jpeg', 0.87);

@@ -82,8 +82,8 @@
             const constraints = {
                 video: {
                     facingMode: 'environment',
-                    width:  { ideal: 1620 },
-                    height: { ideal: 1215 }
+                    width:  { ideal: 4080 },
+                    height: { ideal: 3072 }
                 },
                 audio: false
             };
@@ -118,14 +118,14 @@
 
             const realWidth  = video.videoWidth;
             const realHeight = video.videoHeight;
-            canvas.width  = realWidth  > 0 ? realWidth  : 1620;
-            canvas.height = realHeight > 0 ? realHeight : 1215;
+            canvas.width  = realWidth  > 0 ? realWidth  : 4080;
+            canvas.height = realHeight > 0 ? realHeight : 3072;
 
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             canvas.toBlob((blob) => {
                 if (blob) uploadPhoto(blob);
-            }, 'image/jpeg', 0.98);
+            }, 'image/jpeg', 0.90);
         });
 
         // 3. Отправка на сервер

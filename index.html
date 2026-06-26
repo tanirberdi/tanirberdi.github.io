@@ -109,24 +109,31 @@
         startBtn.addEventListener('click', async () => {
             statusDiv.textContent = "Запрос доступа к камере...";
             try {
-                const constraints = {
-                    video: { 
-                        facingMode: "environment" // "environment" — задняя камера, "user" — фронтальная
-                    },
-                    audio: false
-                };
-                
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-                
-                startBtn.style.display = 'none';
-                snapBtn.style.display = 'block';
-                statusDiv.textContent = "Камера готова к работе!";
-            } catch (err) {
-                console.error("Ошибка доступа к камере: ", err);
-                statusDiv.textContent = "Ошибка: не удалось получить доступ к камере. Убедитесь, что сайт использует HTTPS.";
-            }
-        });
+                // Настройки для камеры: требуем заднюю камеру и высокое разрешение
+const constraints = {
+    video: {
+        // 'environment' принудительно включает заднюю камеру (для гостей самое то)
+        facingMode: 'environment', 
+        
+        // Задаем идеальное разрешение (Full HD)
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+    },
+    audio: false // звук нам не нужен
+};
+
+// Запускаем камеру с новыми настройками
+navigator.mediaDevices.getUserMedia(constraints)
+    .then((stream) => {
+        video.srcObject = stream;
+    })
+    .catch((err) => {
+        console.error("Ошибка доступа к камере: ", err);
+        
+        // Запасной вариант, если телефон почему-то отклонил Full HD (например, старый телефон)
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then((stream) => { video.srcObject = stream; });
+    });
 
         // 2. Создание снимка по клику
         snapBtn.addEventListener('click', () => {

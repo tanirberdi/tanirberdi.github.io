@@ -130,25 +130,26 @@
 
         // 3. Отправка на сервер
         async function uploadPhoto(photoBlob) {
-            const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
-            statusDiv.textContent = `Отправка фото... (${fileSizeMB} МБ)`;
+    const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
+    statusDiv.textContent = `Отправка фото в облако... (${fileSizeMB} МБ)`;
 
-            const formData = new FormData();
-            formData.append('photo', photoBlob, `photo_${Date.now()}.jpg`);
+    try {
+        // Отправляем БЕЗ FormData — просто чистый blob (поток байт)
+        const response = await fetch('https://hook.eu1.make.com/usmx9e6xjjoo1d4t8zk5c685qyw9duv9', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream' // Говорим Make, что это чистый файл
+            },
+            body: photoBlob 
+        });
 
-            try {
-                const response = await fetch('https://hook.eu1.make.com/usmx9e6xjjoo1d4t8zk5c685qyw9duv9', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    statusDiv.textContent = "Успешно загружено! Сделайте ещё фото.";
-                } else {
-                    statusDiv.textContent = "Ошибка при загрузке на сервер.";
-                }
-            } catch (error) {
-                console.error("Ошибка сети:", error);
+        if (response.ok) {
+            statusDiv.textContent = `Успешно загружено (${fileSizeMB} МБ) в папку Wedding!`;
+        } else {
+            statusDiv.textContent = `Ошибка сервера. Статус: ${response.status}`;
+        }
+    } catch (error) {
+        console.error("Ошибка сети:", error);
                 statusDiv.textContent = "Ошибка сети. Проверьте соединение.";
             }
         }

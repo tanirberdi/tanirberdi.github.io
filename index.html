@@ -35,9 +35,10 @@
             display: flex;
             justify-content: center;
             gap: 15px;
+            flex-wrap: wrap; /* Чтобы кнопки красиво переносились на узких экранах */
         }
         button {
-            padding: 15px 30px;
+            padding: 15px 25px;
             font-size: 16px;
             font-weight: bold;
             border: none;
@@ -48,17 +49,17 @@
         button:active { transform: scale(0.95); }
         #start-btn { background-color: #007aff; color: white; }
         #snap-btn { background-color: #ff3b30; color: white; display: none; }
+        #switch-btn { background-color: #34c759; color: white; display: none; } /* Зеленая кнопка смены камеры */
         #status { margin-top: 15px; font-size: 14px; color: #a1a1a6; text-align: center; }
         canvas { display: none; }
         
-        /* Стили кнопки галереи */
         .btn-gallery {
             display: block;
             width: 80%;
             max-width: 300px;
             margin: 25px auto 10px auto;
             padding: 12px 20px;
-            background-color: #ff5722; /* Красивый оранжевый цвет */
+            background-color: #ff5722;
             color: white;
             text-align: center;
             text-decoration: none;
@@ -84,7 +85,7 @@
     <div class="controls">
         <button id="start-btn">Включить камеру</button>
         <button id="snap-btn">Сделать снимок</button>
-    </div>
+        <button id="switch-btn">🔄 Сменить камеру</button> </div>
 
     <div id="status">Нажмите кнопку для запуска камеры</div>
     
@@ -95,19 +96,31 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        const video    = document.getElementById('video');
-        const canvas   = document.getElementById('canvas');
-        const startBtn = document.getElementById('start-btn');
-        const snapBtn  = document.getElementById('snap-btn');
+        const video     = document.getElementById('video');
+        const canvas    = document.getElementById('canvas');
+        const startBtn  = document.getElementById('start-btn');
+        const snapBtn   = document.getElementById('snap-btn');
+        const switchBtn = document.getElementById('switch-btn');
         const statusDiv = document.getElementById('status');
 
-        // 1. Запуск камеры
-        startBtn.addEventListener('click', async () => {
+        let currentStream = null;
+        let currentFacingMode = 'environment'; // По умолчанию задняя камера ('environment'). Фронтальная — 'user'
+
+        // Функция остановки текущих стримов кары (нужна при переключении)
+        function stopCurrentStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // Функция запуска камеры
+        async function initCamera() {
+            stopCurrentStream();
             statusDiv.textContent = "Запрос доступа к камере...";
 
             const constraints = {
                 video: {
-                    facingMode: 'environment',
+                    facingMode: currentFacingMode,
                     width:  { ideal: 3400 },
                     height: { ideal: 2560 }
                 },
@@ -115,27 +128,38 @@
             };
 
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
                 startBtn.style.display = 'none';
-                snapBtn.style.display  = 'inline-block';
-                statusDiv.textContent  = "Камера включена. Можно снимать!";
+                snapBtn.style.style.display  = 'inline-block';
+                switchBtn.style.display = 'inline-block'; // Показываем кнопку смены камеры
+                statusDiv.textContent  = `Камера включена (${currentFacingMode === 'environment' ? 'основная' : 'фронтальная'}). можно снимать!`;
             } catch (err) {
                 console.warn("Высокое разрешение недоступно, пробуем запасной вариант:", err);
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'environment' },
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: currentFacingMode },
                         audio: false
                     });
-                    video.srcObject = stream;
+                    video.srcObject = currentStream;
                     startBtn.style.display = 'none';
                     snapBtn.style.display  = 'inline-block';
+                    switchBtn.style.display = 'inline-block';
                     statusDiv.textContent  = "Камера включена (стандартное разрешение).";
                 } catch (err2) {
                     console.error("Ошибка доступа к камере:", err2);
                     statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";
                 }
             }
+        }
+
+        // 1. Нажатие кнопки включения
+        startBtn.addEventListener('click', initCamera);
+
+        // КНОПКА СМЕНЫ КАМЕРЫ: меняет режим и перезапускает камеру
+        switchBtn.addEventListener('click', () => {
+            currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+            initCamera();
         });
 
         // 2. Создание снимка
@@ -147,7 +171,18 @@
             canvas.width  = realWidth  > 0 ? realWidth  : 3400;
             canvas.height = realHeight > 0 ? realHeight : 2560;
 
+            // Если камера фронтальная, можно отзеркалить холст, чтобы фото не было перевернутым
+            if (currentFacingMode === 'user') {
+                context.translate(canvas.width, 0);
+                context.scale(-1, 1);
+            }
+
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Сбрасываем трансформацию холста обратно, если зеркалили
+            if (currentFacingMode === 'user') {
+                context.setTransform(1, 0, 0, 1, 0, 0);
+            }
 
             canvas.toBlob((blob) => {
                 if (blob) uploadPhoto(blob);

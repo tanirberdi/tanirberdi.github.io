@@ -50,6 +50,26 @@
         #snap-btn { background-color: #ff3b30; color: white; display: none; }
         #status { margin-top: 15px; font-size: 14px; color: #a1a1a6; text-align: center; }
         canvas { display: none; }
+            .btn-gallery {
+    display: block;
+    width: 80%;
+    max-width: 300px;
+    margin: 25px auto 10px auto; /* Отступы: сверху побольше, чтобы отделить от камеры */
+    padding: 12px 20px;
+    background-color: #ff5722; /* Яркий цвет (например, оранжевый), чтобы отличалась от кнопки снимка */
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 25px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+.btn-gallery:hover {
+    background-color: #e64a19; /* Эффект при нажатии/наведении */
+}
     </style>
 </head>
 <body>
@@ -152,7 +172,11 @@
         console.error("Ошибка сети:", error);
                 statusDiv.textContent = "Ошибка сети. Проверьте соединение.";
             }
+            <a href="https://disk.yandex.ru/d/ваш_уникальный_код" target="_blank" id="galleryBtn" class="btn-gallery">
+    📸 Посмотреть все фото (Галерея)
+</a>
         }
+        
     </script>
 </body>
 </html>

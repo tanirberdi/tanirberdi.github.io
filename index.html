@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Фотогалерея Мероприятия</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #121212;
@@ -20,11 +16,7 @@
             padding: 20px;
             min-height: 100vh;
         }
-        h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            text-align: center;
-        }
+        h1 { margin-bottom: 20px; font-size: 24px; text-align: center; }
         .camera-container {
             position: relative;
             width: 100%;
@@ -35,11 +27,7 @@
             overflow: hidden;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        video { width: 100%; height: 100%; object-fit: cover; }
         .controls {
             margin-top: 25px;
             width: 100%;
@@ -57,28 +45,11 @@
             cursor: pointer;
             transition: transform 0.1s ease;
         }
-        button:active {
-            transform: scale(0.95);
-        }
-        #start-btn {
-            background-color: #007aff;
-            color: white;
-        }
-        #snap-btn {
-            background-color: #ff3b30;
-            color: white;
-            display: none; /* Появляется только после включения камеры */
-        }
-        #status {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #a1a1a6;
-            text-align: center;
-        }
-        /* Скрытый холст для обработки снимка */
-        canvas {
-            display: none;
-        }
+        button:active { transform: scale(0.95); }
+        #start-btn { background-color: #007aff; color: white; }
+        #snap-btn { background-color: #ff3b30; color: white; display: none; }
+        #status { margin-top: 15px; font-size: 14px; color: #a1a1a6; text-align: center; }
+        canvas { display: none; }
     </style>
 </head>
 <body>
@@ -95,96 +66,90 @@
     </div>
 
     <div id="status">Нажмите кнопку для запуска камеры</div>
-
     <canvas id="canvas"></canvas>
 
     <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
+        const video    = document.getElementById('video');
+        const canvas   = document.getElementById('canvas');
         const startBtn = document.getElementById('start-btn');
-        const snapBtn = document.getElementById('snap-btn');
+        const snapBtn  = document.getElementById('snap-btn');
         const statusDiv = document.getElementById('status');
 
-        // 1. Запуск камеры смартфона (задней по умолчанию)
+        // 1. Запуск камеры
         startBtn.addEventListener('click', async () => {
             statusDiv.textContent = "Запрос доступа к камере...";
+
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                    width:  { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            };
+
             try {
-                // Настройки для камеры: требуем заднюю камеру и высокое разрешение
-const constraints = {
-    video: {
-        // 'environment' принудительно включает заднюю камеру (для гостей самое то)
-        facingMode: 'environment', 
-        
-        // Задаем идеальное разрешение (Full HD)
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-    },
-    audio: false // звук нам не нужен
-};
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                startBtn.style.display = 'none';
+                snapBtn.style.display  = 'inline-block';
+                statusDiv.textContent  = "Камера включена. Можно снимать!";
+            } catch (err) {
+                console.warn("Full HD недоступно, пробуем запасной вариант:", err);
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' },
+                        audio: false
+                    });
+                    video.srcObject = stream;
+                    startBtn.style.display = 'none';
+                    snapBtn.style.display  = 'inline-block';
+                    statusDiv.textContent  = "Камера включена (стандартное разрешение).";
+                } catch (err2) {
+                    console.error("Ошибка доступа к камере:", err2);
+                    statusDiv.textContent = "Не удалось открыть камеру. Проверьте разрешения браузера.";
+                }
+            }
+        }); // ← закрываем startBtn listener
 
-// Запускаем камеру с новыми настройками
-navigator.mediaDevices.getUserMedia(constraints)
-    .then((stream) => {
-        video.srcObject = stream;
-    })
-    .catch((err) => {
-        console.error("Ошибка доступа к камере: ", err);
-        
-        // Запасной вариант, если телефон почему-то отклонил Full HD (например, старый телефон)
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then((stream) => { video.srcObject = stream; });
-    });
-
-        // 2. Создание снимка по клику
+        // 2. Создание снимка
         snapBtn.addEventListener('click', () => {
-    const context = canvas.getContext('2d');
-    
-    // Получаем реальное разрешение видеопотока из камеры
-    const realWidth = video.videoWidth;
-    const realHeight = video.videoHeight;
+            const context = canvas.getContext('2d');
 
-    // Если камера еще не вернула размеры, используем стандартные высокие параметры
-    canvas.width = realWidth > 0 ? realWidth : 1920;
-    canvas.height = realHeight > 0 ? realHeight : 1080;
-    
-    // Зеркально разворачиваем холст перед отрисовкой (если у вас селфи-камера отзеркалена)
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Конвертируем в JPEG с максимальным качеством 0.95 (1.0 делать не стоит, оно просто раздувает вес без улучшения)
-    canvas.toBlob((blob) => {
-        if (blob) {
-            uploadPhoto(blob);
-        }
-    }, 'image/jpeg', 0.95); 
-});
+            const realWidth  = video.videoWidth;
+            const realHeight = video.videoHeight;
+            canvas.width  = realWidth  > 0 ? realWidth  : 1920;
+            canvas.height = realHeight > 0 ? realHeight : 1080;
 
-        // 3. Функция отправки фотографии в облако (на сервер)
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+                if (blob) uploadPhoto(blob);
+            }, 'image/jpeg', 0.95);
+        });
+
+        // 3. Отправка на сервер
         async function uploadPhoto(photoBlob) {
-            statusDiv.textContent = "Отправка фото в облако...";
-            
-            // Создаем форму для отправки файла
+            const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
+            statusDiv.textContent = `Отправка фото... (${fileSizeMB} МБ)`;
+
             const formData = new FormData();
             formData.append('photo', photoBlob, `photo_${Date.now()}.jpg`);
-            // Переводим байты в Мегабайты и округляем до 2 знаков после запятой
-                const fileSizeMB = (photoBlob.size / (1024 * 1024)).toFixed(2);
-                statusDiv.textContent = `Отправка фото в облако... (${fileSizeMB} МБ)`;
 
             try {
-                // ВАЖНО: Замените URL ниже на адрес вашего бэкенда или облачного хранилища
                 const response = await fetch('https://hook.eu1.make.com/usmx9e6xjjoo1d4t8zk5c685qyw9duv9', {
                     method: 'POST',
                     body: formData
                 });
 
                 if (response.ok) {
-                    statusDiv.textContent = "Успешно загружено! Сделайте еще фото.";
+                    statusDiv.textContent = "Успешно загружено! Сделайте ещё фото.";
                 } else {
                     statusDiv.textContent = "Ошибка при загрузке на сервер.";
                 }
             } catch (error) {
                 console.error("Ошибка сети:", error);
-                // Для демонстрации (если сервера нет), покажем что скрипт отработал локально:
-                statusDiv.textContent = "Локальный снимок сделан! (Для реальной загрузки нужен настроенный серверный URL)";
+                statusDiv.textContent = "Ошибка сети. Проверьте соединение.";
             }
         }
     </script>
